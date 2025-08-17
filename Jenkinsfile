@@ -4,35 +4,40 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo "📥 Checking out code..."
+                echo "📥 Cloning project from GitHub..."
+                git branch: 'yogi', url: 'https://github.com/yogesh773/webtest.git'
             }
         }
 
-        stage('Build') {
+        stage('Unzip Project') {
             steps {
-                echo "🔨 Simulating build... (no Maven project found)"
+                echo "📂 Unzipping mywebpage.zip..."
+                sh '''
+                    rm -rf project
+                    mkdir project
+                    unzip -o mywebpage.zip -d project
+                '''
             }
         }
 
-        stage('Test') {
+        stage('Deploy to Nginx') {
             steps {
-                echo "🧪 Running tests..."
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                echo "🚀 Deploying application..."
+                echo "🚀 Deploying project to Nginx..."
+                sh '''
+                    sudo rm -rf /var/www/html/*
+                    sudo cp -r project/* /var/www/html/
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "✅ Pipeline finished successfully!"
+            echo "✅ Deployment successful! Visit your server IP in browser."
         }
         failure {
-            echo "❌ Pipeline failed!"
+            echo "❌ Deployment failed!"
         }
     }
 }
+
