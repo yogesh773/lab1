@@ -1,43 +1,72 @@
 pipeline {
     agent any
+    environment {
+        PROJECT_NAME = 'templatemo_594_nexus_flow.zip'
+        NGINX_DIR = '/var/www/html'
+        GIT_REPO = 'https://github.com/yogesh773/webtest.git' // replace with your repo
+    }
+
+    options {
+        timestamps()
+        skipDefaultCheckout()
+    }
 
     stages {
-        stage('Checkout') {
+
+        stage('Deploy from Git to Nginx') {
             steps {
-                echo "📥 Cloning project from GitHub..."
-                git branch: 'yogi', url: 'https://github.com/yogesh773/webtest.git'
+                echo "Deploying project.zip from Git to Nginx..."
+                
+                sh """
+                    set -e
+
+                    # Clone repo to temporary folder
+                    git clone ${GIT_REPO} temp_repo
+
+                    # Check if project.zip exists
+                    if [ ! -f temp_repo/project.zip ]; then
+                        echo "project.zip not found in Git repo!"
+                        rm -rf temp_repo
+                        exit 1
+                    fi
+
+                    # Remove old files in Nginx folder
+                    sudo rm -rf ${NGINX_DIR}/*
+
+                    # Copy new zip
+                    sudo cp temp_repo/project.zip ${NGINX_DIR}/
+
+                    # Unzip and remove zip
+                    cd ${NGINX_DIR} && sudo unzip -o project.zip && sudo rm project.zip
+
+                    # Fix permissions
+                    sudo chown -R www-data:www-data ${NGINX_DIR}
+
+                    # Clean up temp repo
+                    rm -rf temp_repo
+                """
             }
         }
 
-        stage('Unzip Project') {
-            steps {
-                echo "📂 Unzipping mywebpage.zip..."
-                sh '''
-                    rm -rf project
-                    mkdir project
-                    unzip -o mywebpage.zip -d project
-                '''
-            }
-        }
-
-        stage('Deploy to Nginx') {
-            steps {
-                echo "🚀 Deploying project to Nginx..."
-                sh '''
-                    sudo rm -rf /var/www/html/*
-                    sudo cp -r project/* /var/www/html/
-                '''
-            }
-        }
     }
 
     post {
         success {
-            echo "✅ Deployment successful! Visit your server IP in browser."
+            echo "Pipeline executed successfully."
         }
+
         failure {
-            echo "❌ Deployment failed!"
+            echo "Pipeline failed."
+        }
+
+        always {
+            echo "Cleaning up workspace..."
+            cleanWs()
         }
     }
 }
+
+
+
+  
 
