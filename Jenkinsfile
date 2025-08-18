@@ -1,72 +1,48 @@
 pipeline {
     agent any
-    environment {
-        PROJECT_NAME = 'templatemo_594_nexus_flow.zip'
-        NGINX_DIR = '/var/www/html'
-        GIT_REPO = 'https://github.com/yogesh773/webtest.git' // replace with your repo
-    }
-
-    options {
-        timestamps()
-        skipDefaultCheckout()
-    }
 
     stages {
-
         stage('Deploy from Git to Nginx') {
             steps {
-                echo "Deploying templatemo_594_nexus_flow.zip from Git to Nginx..."
-                
-                sh """
+                echo "🚀 Deploying templatemo_594_nexus_flow.zip from Git to Nginx..."
+                sh '''
                     set -e
+                    git clone https://github.com/yogesh773/webtest.git temp_repo
 
-                    # Clone repo to temporary folder
-                    git clone ${GIT_REPO} temp_repo
-
-                    # Check if project.zip exists
-                    if [ ! -f templatemo_594_nexus_flow.zip ]; then
-                        echo "templatemo_594_nexus_flow.zip not found in Git repo!"
+                    if [ ! -f temp_repo/templatemo_594_nexus_flow.zip ]; then
+                        echo "❌ templatemo_594_nexus_flow.zip not found in Git repo!"
                         rm -rf temp_repo
                         exit 1
                     fi
 
-                    # Remove old files in Nginx folder
-                    sudo rm -rf ${NGINX_DIR}/*
+                    echo "📂 Unzipping project..."
+                    unzip -o temp_repo/templatemo_594_nexus_flow.zip -d project
 
-                    # Copy new zip
-                    sudo cp templatemo_594_nexus_flow.zip ${NGINX_DIR}/
+                    echo "🗑️ Cleaning old files..."
+                    sudo rm -rf /var/www/html/*
 
-                    # Unzip and remove zip
-                    cd ${NGINX_DIR} && sudo unzip -o templatemo_594_nexus_flow.zip && sudo rm project.zip
+                    echo "📥 Copying new files..."
+                    sudo cp -r project/* /var/www/html/
 
-                    # Fix permissions
-                    sudo chown -R www-data:www-data ${NGINX_DIR}
+                    echo "🔄 Restarting Nginx..."
+                    sudo systemctl restart nginx
 
-                    # Clean up temp repo
                     rm -rf temp_repo
-                """
+                '''
             }
         }
-
     }
 
     post {
-        success {
-            echo "Pipeline executed successfully."
-        }
-
         failure {
-            echo "Pipeline failed."
+            echo "❌ Deployment failed!"
         }
-
+        success {
+            echo "✅ Deployment successful!"
+        }
         always {
-            echo "Cleaning up workspace..."
+            echo "🧹 Cleaning up workspace..."
             cleanWs()
         }
     }
 }
-
-
-
-  
-
